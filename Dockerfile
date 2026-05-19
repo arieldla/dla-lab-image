@@ -47,7 +47,7 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 # ─────────────────────────────────────────
 # Layer 4 - Terraform
 # ─────────────────────────────────────────
-RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip \
+RUN wget -O terraform.zip https://releases.hashicorp.com/terraform/1.12.0/terraform_1.12.0_linux_amd64.zip \
     && unzip terraform.zip -d /usr/local/bin/ \
     && rm terraform.zip
 
