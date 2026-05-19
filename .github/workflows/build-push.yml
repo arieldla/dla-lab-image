@@ -1,0 +1,99 @@
+# ─────────────────────────────────────────
+# DLA Lab Image - GitHub Actions Workflow
+# Builds and pushes to GHCR, ECR, and ACR
+# Triggers on every push to main
+# ─────────────────────────────────────────
+
+name: Build and Push DLA Lab Image
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+env:
+    IMAGE_NAME: dla-lab-image
+    ECR_REGISTRY: 640168421612.dkr.ecr.us-east-1.amazonaws.com
+    ACR_REGISTRY: dlagroupacr.azurecr.io
+
+jobs:
+    build-scan-push:
+        runs-on: ubuntu-latest
+
+        steps:
+            # ─────────────────────────────────────
+            # Step 1 - Checkout code
+            # ─────────────────────────────────────
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            # ─────────────────────────────────────
+            # Step 2 - Build image locally first
+            # ─────────────────────────────────────
+            - name: Build Docker image
+              run: |
+                  docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+                  docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+
+            # ─────────────────────────────────────
+            # Step 3 - Trivy scan before pushing
+            # Fail build if CRITICAL vulns found
+            # ─────────────────────────────────────
+            - name: Trivy vulnerability scan
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ env.IMAGE_NAME }}:latest
+                  format: table
+                  exit-code: 1
+                  severity: CRITICAL
+
+            # ─────────────────────────────────────
+            # Step 4 - Push to GHCR
+            # ─────────────────────────────────────
+            - name: Login to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Push to GHCR
+              run: |
+                  docker tag ${{ env.IMAGE_NAME }}:latest ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+                  docker tag ${{ env.IMAGE_NAME }}:latest ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  docker push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+                  docker push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+            # ─────────────────────────────────────
+            # Step 5 - Push to AWS ECR
+            # ─────────────────────────────────────
+            - name: Login to AWS ECR
+              uses: aws-actions/amazon-ecr-login@v2
+              env:
+                  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  AWS_REGION: us-east-1
+
+            - name: Push to ECR
+              run: |
+                  docker tag ${{ env.IMAGE_NAME }}:latest ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+                  docker tag ${{ env.IMAGE_NAME }}:latest ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  docker push ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+                  docker push ${{ env.ECR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+            # ─────────────────────────────────────
+            # Step 6 - Push to Azure ACR
+            # ─────────────────────────────────────
+            - name: Login to Azure ACR
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.ACR_REGISTRY }}
+                  username: ${{ secrets.ACR_USERNAME }}
+                  password: ${{ secrets.ACR_PASSWORD }}
+
+            - name: Push to ACR
+              run: |
+                  docker tag ${{ env.IMAGE_NAME }}:latest ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+                  docker tag ${{ env.IMAGE_NAME }}:latest ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+                  docker push ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+                  docker push ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}

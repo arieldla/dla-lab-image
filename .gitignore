@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────
+# DLA Lab Image - .gitignore
+# ─────────────────────────────────────────
+
+# AWS credentials - never commit these
+.aws/
+*.pem
+*.key
+credentials
+
+# Azure credentials
+.azure/
+*.pfx
+
+# Environment files with secrets
+.env
+.env.*
+*.env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Docker
+*.tar
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Test output
+test-results/
