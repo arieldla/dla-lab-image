@@ -1,0 +1,5 @@
+# CVE in Terraform's compiled grpc dependency - upstream fix pending HashiCorp release
+CVE-2026-33186
+
+# CVE in Terraform's compiled Go stdlib - upstream fix pending HashiCorp release
+CVE-2025-68121
